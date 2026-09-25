@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Make 10 Puzzle for Kids</title>
+<style>
+  body {
+    background-color: #f0f8ff;
+    color: #333;
+    font-family: 'Hiragino Maru Gothic ProN', 'Rounded M+ 1c', 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 30px;
+    user-select: none;
+  }
+  h1 { margin-bottom: 10px; font-size: 32px; color: #ff6b6b; text-shadow: 2px 2px 0px #ffd93d; letter-spacing: 2px;}
+  p.desc { color: #555; margin-bottom: 20px; font-size: 16px; text-align: center; font-weight: bold;}
+  
+  #game-container { display: flex; gap: 30px; }
+  
+  #board {
+    background-color: #e0f2fe;
+    border: 6px solid #38bdf8;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  }
+  
+  /* 盤面が揺れるエフェクト */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0) translateY(0); }
+    25% { transform: translateX(-4px) translateY(3px) rotate(-1deg); }
+    50% { transform: translateX(4px) translateY(-3px) rotate(1deg); }
+    75% { transform: translateX(-4px) translateY(-3px) rotate(0deg); }
+  }
+  .board-shake {
+    animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+  }
+
+  .cell {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    box-sizing: border-box;
+    border: 3px solid rgba(255,255,255,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 900;
+    font-size: 28px;
+    color: #fff;
+    border-radius: 16px;
+    transition: top 0.15s ease-in, left 0.1s;
+    box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.3);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  }
+  
+  /* 派手に弾け飛ぶアニメーション */
+  @keyframes explode {
+    0% { transform: scale(1); filter: brightness(1); }
+    40% { transform: scale(1.4) rotate(15deg); filter: brightness(1.5); box-shadow: 0 0 30px #fff, 0 0 60px #ff9f43; z-index: 100; }
+    100% { transform: scale(0) rotate(-15deg); filter: brightness(2); opacity: 0; }
+  }
+  
+  .cell.flash {
+    animation: explode 0.5s forwards;
+    background-color: #fff !important;
+    color: #ff9f43 !important;
+    border-color: #fff;
+  }
+
+  /* 飛び散るパーティクル（紙吹雪） */
+  .particle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 50;
+    box-shadow: 0 0 6px rgba(255,255,255,0.8);
+  }
+
+  #ui-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 120px;
+  }
+
+  .panel-box {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+    border: 4px solid #fca311;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  
+  .panel-box h3 { margin: 0 0 10px 0; font-size: 16px; color: #fca311; }
+  .panel-box h3.small { font-size: 13px; }
+  
+  #score { font-size: 28px; font-weight: bold; color: #ff595e; }
+  
+  #next-container, #next-next-container {
+    width: 60px; height: 60px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .controls { margin-top: 30px; text-align: center; color: #666; font-size: 16px; font-weight: bold; line-height: 1.8;}
+</style>
+</head>
+<body>
+
+<h1>Make 10 パズル</h1>
+<p class="desc">縦かくっつけて「10」を作ろう！<br>（例：2と8、1と4と5、2と1と6と1）</p>
+
+<div id="game-container">
+  <div id="board"></div>
+  <div id="ui-panel">
+    <div class="panel-box">
+      <h3>スコア</h3>
+      <div id="score">0</div>
+    </div>
+    <div class="panel-box">
+      <h3>つぎ</h3>
+      <div id="next-container"></div>
+    </div>
+    <div class="panel-box">
+      <h3 class="small">つぎのつぎ</h3>
+      <div id="next-next-container"></div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  [ ← ] [ → ] : 左右にうごかす<br>
+  [ ↓ ] : はやくおとす
+</div>
+
+<script>
+  const COLS = 6;
+  const ROWS = 10;
+  const CELL_SIZE = 60;
+  const boardEl = document.getElementById('board');
+  const scoreEl = document.getElementById('score');
+  const nextContainer = document.getElementById('next-container');
+  const nextNextContainer = document.getElementById('next-next-container');
+  
+  boardEl.style.width = (COLS * CELL_SIZE) + 'px';
+  boardEl.style.height = (ROWS * CELL_SIZE) + 'px';
+
+  let board = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+  let score = 0;
+  
+  const numbersPool = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  function getRandomNumber() {
+    return numbersPool[Math.floor(Math.random() * numbersPool.length)];
+  }
+
+  function getColor(val) {
+    const colors = {
+      1: '#ff595e', 2: '#ff924c', 3: '#ffca3a', 4: '#8ac926', 
+      5: '#52a675', 6: '#1982c4', 7: '#4267ac', 8: '#6a4c93', 9: '#b565a7'
+    };
+    return colors[val] || '#ccc';
+  }
+
+  let currentX = 2;
+  let currentY = 0;
+  let currentVal = getRandomNumber();
+  let nextVal = getRandomNumber();
+  let nextNextVal = getRandomNumber();
+  let dropCounter = 0;
+  let dropInterval = 1000;
+  let lastTime = 0;
+  let isResolving = false;
+
+  let activeBlockEl = createBlockElement(currentX, currentY, currentVal);
+  boardEl.appendChild(activeBlockEl);
+  updateNextPiece();
+
+  function createBlockElement(x, y, val, isNext = false) {
+    const el = document.createElement('div');
+    el.className = 'cell';
+    el.innerText = val;
+    el.style.backgroundColor = getColor(val);
+    if (!isNext) {
+      el.style.left = (x * CELL_SIZE) + 'px';
+      el.style.top = (y * CELL_SIZE) + 'px';
+    } else {
+      el.style.left = '0px';
+      el.style.top = '0px';
+    }
+    return el;
+  }
+
+  function updateNextPiece() {
+    nextContainer.innerHTML = '';
+    const nextEl = createBlockElement(0, 0, nextVal, true);
+    nextContainer.appendChild(nextEl);
+
+    nextNextContainer.innerHTML = '';
+    const nextNextEl = createBlockElement(0, 0, nextNextVal, true);
+    nextNextContainer.appendChild(nextNextEl);
+  }
+
+  function move(dx, dy) {
+    if (isResolving) return false;
+    const newX = currentX + dx;
+    const newY = currentY + dy;
+    
+    if (newX < 0 || newX >= COLS || newY >= ROWS) return false;
+    if (newY >= 0 && board[newY][newX] !== null) return false;
+    
+    currentX = newX;
+    currentY = newY;
+    activeBlockEl.style.left = (currentX * CELL_SIZE) + 'px';
+    activeBlockEl.style.top = (currentY * CELL_SIZE) + 'px';
+    return true;
+  }
+
+  function lock() {
+    board[currentY][currentX] = { val: currentVal, el: activeBlockEl };
+    isResolving = true;
+    resolveMatches().then(() => {
+      currentX = Math.floor(COLS / 2) - 1;
+      currentY = 0;
+      currentVal = nextVal;
+      nextVal = nextNextVal;
+      nextNextVal = getRandomNumber();
+      updateNextPiece();
+      
+      if (board[currentY][currentX] !== null) {
+        alert("ゲームオーバー！ スコア: " + score);
+        resetGame();
+      } else {
+        activeBlockEl = createBlockElement(currentX, currentY, currentVal);
+        boardEl.appendChild(activeBlockEl);
+        isResolving = false;
+      }
+    });
+  }
+
+  // ★追加：パーティクル（紙吹雪）を生成する関数
+  function spawnParticles(x, y) {
+    const colors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#fff'];
+    // ブロックの中心座標を計算
+    const startX = x * CELL_SIZE + CELL_SIZE / 2 - 6;
+    const startY = y * CELL_SIZE + CELL_SIZE / 2 - 6;
+
+    for (let i = 0; i < 10; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      p.style.left = startX + 'px';
+      p.style.top = startY + 'px';
+      boardEl.appendChild(p);
+
+      // ランダムな方向に飛ばす
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 40 + Math.random() * 80;
+      const tx = Math.cos(angle) * distance;
+      const ty = Math.sin(angle) * distance;
+
+      p.animate([
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+        { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+      ], {
+        duration: 500 + Math.random() * 300,
+        easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
+      }).onfinish = () => p.remove();
+    }
+  }
+
+  async function resolveMatches() {
+    let hasMatch = true;
+    let chainCount = 0;
+
+    while(hasMatch) {
+      hasMatch = false;
+      let toRemove = [];
+      
+      for(let y = 0; y < ROWS; y++) {
+        for(let startX = 0; startX < COLS - 1; startX++) {
+          let sum = 0;
+          let currentLine = [];
+          for(let x = startX; x < COLS; x++) {
+            let cell = board[y][x];
+            if(!cell) break; 
+            
+            sum += cell.val;
+            currentLine.push({x: x, y: y});
+            
+            if(sum === 10 && currentLine.length >= 2) {
+              toRemove.push(...currentLine);
+              break; 
+            } else if (sum > 10) {
+              break; 
+            }
+          }
+        }
+      }
+
+      for(let x = 0; x < COLS; x++) {
+        for(let startY = 0; startY < ROWS - 1; startY++) {
+          let sum = 0;
+          let currentLine = [];
+          for(let y = startY; y < ROWS; y++) {
+            let cell = board[y][x];
+            if(!cell) break;
+            
+            sum += cell.val;
+            currentLine.push({x: x, y: y});
+            
+            if(sum === 10 && currentLine.length >= 2) {
+              toRemove.push(...currentLine);
+              break;
+            } else if (sum > 10) {
+              break;
+            }
+          }
+        }
+      }
+
+      if(toRemove.length > 0) {
+        hasMatch = true;
+        chainCount++;
+        
+        toRemove = toRemove.filter((v,i,a)=>a.findIndex(t=>(t.x === v.x && t.y===v.y))===i);
+        
+        // ★画面揺れエフェクトを追加
+        boardEl.classList.remove('board-shake');
+        void boardEl.offsetWidth; // アニメーションのリセット用
+        boardEl.classList.add('board-shake');
+        
+        toRemove.forEach(p => {
+          if(board[p.y][p.x]) {
+             board[p.y][p.x].el.classList.add('flash');
+             spawnParticles(p.x, p.y); // ★パーティクル発射
+             score += (10 * chainCount); 
+          }
+        });
+        scoreEl.innerText = score;
+        
+        // ★アニメーションの待ち時間を少し長く（500ms）に変更
+        await new Promise(r => setTimeout(r, 500));
+
+        toRemove.forEach(p => {
+          if(board[p.y][p.x]) {
+            boardEl.removeChild(board[p.y][p.x].el);
+            board[p.y][p.x] = null;
+          }
+        });
+
+        await applyGravity();
+      }
+    }
+  }
+
+  async function applyGravity() {
+    let moved = false;
+    for(let x = 0; x < COLS; x++) {
+      for(let y = ROWS - 2; y >= 0; y--) {
+        if(board[y][x]) {
+          let targetY = y;
+          while(targetY + 1 < ROWS && board[targetY + 1][x] === null) {
+            targetY++;
+          }
+          if(targetY !== y) {
+            board[targetY][x] = board[y][x];
+            board[y][x] = null;
+            board[targetY][x].el.style.top = (targetY * CELL_SIZE) + 'px';
+            moved = true;
+          }
+        }
+      }
+    }
+    if(moved) {
+      await new Promise(r => setTimeout(r, 200)); 
+    }
+  }
+
+  function resetGame() {
+    board.forEach(row => row.forEach(cell => {
+      if(cell) boardEl.removeChild(cell.el);
+    }));
+    if(activeBlockEl && activeBlockEl.parentNode) {
+      boardEl.removeChild(activeBlockEl);
+    }
+    board = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+    score = 0;
+    scoreEl.innerText = score;
+    currentX = Math.floor(COLS / 2) - 1;
+    currentY = 0;
+    
+    currentVal = getRandomNumber();
+    nextVal = getRandomNumber();
+    nextNextVal = getRandomNumber();
+    
+    activeBlockEl = createBlockElement(currentX, currentY, currentVal);
+    boardEl.appendChild(activeBlockEl);
+    updateNextPiece();
+    isResolving = false;
+  }
+
+  function update(time = 0) {
+    if(!isResolving) {
+      const deltaTime = time - lastTime;
+      lastTime = time;
+      dropCounter += deltaTime;
+      if (dropCounter > dropInterval) {
+        if (!move(0, 1)) {
+          lock();
+        }
+        dropCounter = 0;
+      }
+    } else {
+      lastTime = time;
+    }
+    requestAnimationFrame(update);
+  }
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'ArrowLeft') {
+      move(-1, 0);
+    } else if (event.key === 'ArrowRight') {
+      move(1, 0);
+    } else if (event.key === 'ArrowDown') {
+      move(0, 1);
+      dropCounter = 0;
+    }
+  });
+
+  update();
+</script>
+</body>
+</html>
