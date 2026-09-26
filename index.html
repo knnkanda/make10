@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Make 10 Puzzle for Kids</title>
 <style>
   body {
@@ -12,13 +13,15 @@
     flex-direction: column;
     align-items: center;
     margin: 0;
-    padding: 30px;
+    padding: 20px 10px;
     user-select: none;
+    -webkit-user-select: none;
+    touch-action: none; /* スマホでのスワイプによる画面スクロールを防止 */
   }
-  h1 { margin-bottom: 10px; font-size: 32px; color: #ff6b6b; text-shadow: 2px 2px 0px #ffd93d; letter-spacing: 2px;}
-  p.desc { color: #555; margin-bottom: 20px; font-size: 16px; text-align: center; font-weight: bold;}
+  h1 { margin-bottom: 5px; font-size: 28px; color: #ff6b6b; text-shadow: 2px 2px 0px #ffd93d; letter-spacing: 2px;}
+  p.desc { color: #555; margin-bottom: 15px; font-size: 14px; text-align: center; font-weight: bold;}
   
-  #game-container { display: flex; gap: 30px; }
+  #game-container { display: flex; gap: 15px; }
   
   #board {
     background-color: #e0f2fe;
@@ -29,7 +32,6 @@
     box-shadow: 0 8px 16px rgba(0,0,0,0.1);
   }
   
-  /* 盤面が揺れるエフェクト */
   @keyframes shake {
     0%, 100% { transform: translateX(0) translateY(0); }
     25% { transform: translateX(-4px) translateY(3px) rotate(-1deg); }
@@ -42,23 +44,22 @@
 
   .cell {
     position: absolute;
-    width: 60px;
-    height: 60px;
+    width: 50px; /* スマホ向けに少し縮小 */
+    height: 50px;
     box-sizing: border-box;
     border: 3px solid rgba(255,255,255,0.4);
     display: flex;
     justify-content: center;
     align-items: center;
     font-weight: 900;
-    font-size: 28px;
+    font-size: 24px;
     color: #fff;
-    border-radius: 16px;
+    border-radius: 12px;
     transition: top 0.15s ease-in, left 0.1s;
-    box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.3);
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.3);
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
   }
   
-  /* 派手に弾け飛ぶアニメーション */
   @keyframes explode {
     0% { transform: scale(1); filter: brightness(1); }
     40% { transform: scale(1.4) rotate(15deg); filter: brightness(1.5); box-shadow: 0 0 30px #fff, 0 0 60px #ff9f43; z-index: 100; }
@@ -72,11 +73,10 @@
     border-color: #fff;
   }
 
-  /* 飛び散るパーティクル（紙吹雪） */
   .particle {
     position: absolute;
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     pointer-events: none;
     z-index: 50;
@@ -86,37 +86,73 @@
   #ui-panel {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    width: 120px;
+    gap: 10px;
+    width: 90px;
   }
 
   .panel-box {
     background-color: #fff;
-    padding: 15px;
+    padding: 10px;
     border-radius: 12px;
     text-align: center;
     border: 4px solid #fca311;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   }
   
-  .panel-box h3 { margin: 0 0 10px 0; font-size: 16px; color: #fca311; }
-  .panel-box h3.small { font-size: 13px; }
+  .panel-box h3 { margin: 0 0 5px 0; font-size: 14px; color: #fca311; }
+  .panel-box h3.small { font-size: 11px; }
   
-  #score { font-size: 28px; font-weight: bold; color: #ff595e; }
+  #score { font-size: 22px; font-weight: bold; color: #ff595e; }
   
   #next-container, #next-next-container {
-    width: 60px; height: 60px;
+    width: 50px; height: 50px;
     margin: 0 auto;
     position: relative;
   }
 
-  .controls { margin-top: 30px; text-align: center; color: #666; font-size: 16px; font-weight: bold; line-height: 1.8;}
+  /* スマホ用操作ボタンのスタイル */
+  #mobile-controls {
+    display: flex;
+    gap: 20px;
+    margin-top: 25px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .control-btn {
+    width: 70px;
+    height: 70px;
+    font-size: 32px;
+    background-color: #38bdf8;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 6px 0 #0284c7, 0 8px 10px rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .control-btn:active {
+    transform: translateY(6px);
+    box-shadow: 0 0 0 #0284c7, 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .controls { margin-top: 15px; text-align: center; color: #888; font-size: 12px; font-weight: bold; line-height: 1.6;}
+  
+  @media (max-width: 600px) {
+    .controls { display: none; } /* スマホではキーボードの説明を隠す */
+  }
 </style>
 </head>
 <body>
 
 <h1>Make 10 パズル</h1>
-<p class="desc">縦かくっつけて「10」を作ろう！<br>（例：2と8、1と4と5、2と1と6と1）</p>
+<p class="desc">縦かくっつけて「10」を作ろう！</p>
 
 <div id="game-container">
   <div id="board"></div>
@@ -136,6 +172,13 @@
   </div>
 </div>
 
+<!-- スマホ用操作ボタン -->
+<div id="mobile-controls">
+  <button class="control-btn" id="btn-left">◀</button>
+  <button class="control-btn" id="btn-down">▼</button>
+  <button class="control-btn" id="btn-right">▶</button>
+</div>
+
 <div class="controls">
   [ ← ] [ → ] : 左右にうごかす<br>
   [ ↓ ] : はやくおとす
@@ -144,7 +187,7 @@
 <script>
   const COLS = 6;
   const ROWS = 10;
-  const CELL_SIZE = 60;
+  const CELL_SIZE = 50; /* スマホ画面に収まるようマスを60から50に変更 */
   const boardEl = document.getElementById('board');
   const scoreEl = document.getElementById('score');
   const nextContainer = document.getElementById('next-container');
@@ -246,12 +289,10 @@
     });
   }
 
-  // ★追加：パーティクル（紙吹雪）を生成する関数
   function spawnParticles(x, y) {
     const colors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#fff'];
-    // ブロックの中心座標を計算
-    const startX = x * CELL_SIZE + CELL_SIZE / 2 - 6;
-    const startY = y * CELL_SIZE + CELL_SIZE / 2 - 6;
+    const startX = x * CELL_SIZE + CELL_SIZE / 2 - 5;
+    const startY = y * CELL_SIZE + CELL_SIZE / 2 - 5;
 
     for (let i = 0; i < 10; i++) {
       const p = document.createElement('div');
@@ -261,7 +302,6 @@
       p.style.top = startY + 'px';
       boardEl.appendChild(p);
 
-      // ランダムな方向に飛ばす
       const angle = Math.random() * Math.PI * 2;
       const distance = 40 + Math.random() * 80;
       const tx = Math.cos(angle) * distance;
@@ -333,21 +373,19 @@
         
         toRemove = toRemove.filter((v,i,a)=>a.findIndex(t=>(t.x === v.x && t.y===v.y))===i);
         
-        // ★画面揺れエフェクトを追加
         boardEl.classList.remove('board-shake');
-        void boardEl.offsetWidth; // アニメーションのリセット用
+        void boardEl.offsetWidth; 
         boardEl.classList.add('board-shake');
         
         toRemove.forEach(p => {
           if(board[p.y][p.x]) {
              board[p.y][p.x].el.classList.add('flash');
-             spawnParticles(p.x, p.y); // ★パーティクル発射
+             spawnParticles(p.x, p.y); 
              score += (10 * chainCount); 
           }
         });
         scoreEl.innerText = score;
         
-        // ★アニメーションの待ち時間を少し長く（500ms）に変更
         await new Promise(r => setTimeout(r, 500));
 
         toRemove.forEach(p => {
@@ -425,16 +463,26 @@
     requestAnimationFrame(update);
   }
 
+  // --- 操作イベントの登録 ---
   document.addEventListener('keydown', event => {
-    if (event.key === 'ArrowLeft') {
-      move(-1, 0);
-    } else if (event.key === 'ArrowRight') {
-      move(1, 0);
-    } else if (event.key === 'ArrowDown') {
-      move(0, 1);
-      dropCounter = 0;
-    }
+    if (event.key === 'ArrowLeft') { move(-1, 0); } 
+    else if (event.key === 'ArrowRight') { move(1, 0); } 
+    else if (event.key === 'ArrowDown') { move(0, 1); dropCounter = 0; }
   });
+
+  // ボタン操作処理 (pointerdownでスマホのタッチとPCのクリックを統合)
+  const setupButton = (id, dx, dy, resetDrop) => {
+    const btn = document.getElementById(id);
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); // スマホでの長押し選択やズームを防止
+      move(dx, dy);
+      if(resetDrop) dropCounter = 0;
+    });
+  };
+
+  setupButton('btn-left', -1, 0, false);
+  setupButton('btn-right', 1, 0, false);
+  setupButton('btn-down', 0, 1, true);
 
   update();
 </script>
